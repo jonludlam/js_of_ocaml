@@ -73,6 +73,16 @@ MlFakeDevice.prototype.isFile = function (name) {
     return 0;
   }
 };
+MlFakeDevice.prototype.rename = function (oldname, newname) {
+  if (this.exists(newname))
+    caml_raise_sys_error(this.nm(newname) + " : file already exists");
+  if (!this.exists(oldname))
+    caml_raise_sys_error(this.nm(oldname) + " : no such file or directory");
+  if (this.is_dir(oldname))
+    caml_raise_sys_error(this.nm(oldname) + " : not a file");
+  this.content[newname] = this.content[oldname];
+  delete this.content[oldname];
+}
 MlFakeDevice.prototype.mkdir = function (name, mode, raise_unix) {
   if (this.exists(name))
     caml_raise_system_error(

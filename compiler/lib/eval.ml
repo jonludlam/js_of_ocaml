@@ -255,6 +255,7 @@ let constant_js_equal a b =
   | Float32 _, Float _ | Float _, Float32 _ -> None
   | NativeString a, NativeString b -> Some (Native_string.equal a b)
   | String a, String b when Config.Flag.use_js_string () -> Some (String.equal a b)
+  | Null, Null -> Some true
   | Int _, (Float _ | Float32 _) | (Float _ | Float32 _), Int _ -> None
   (* All other values may be distinct objects and thus different by [caml_js_equals]. *)
   | String _, _
@@ -270,7 +271,9 @@ let constant_js_equal a b =
   | NativeInt _, _
   | _, NativeInt _
   | Tuple _, _
-  | _, Tuple _ -> None
+  | _, Tuple _
+  | Null, _
+  | _, Null -> None
 
 let eval_instr ~target info i =
   match i with
@@ -408,6 +411,7 @@ let the_cond_of info x =
     (fun x ->
       match Flow.Info.def info x with
       | Some (Constant (Int x)) -> if Targetint.is_zero x then Zero else Non_zero
+      | Some (Constant Null) -> Zero
       | Some
           (Constant
              ( Int32 _

@@ -376,11 +376,12 @@ let constant_identical ~(target : [ `JavaScript | `Wasm ]) a b =
   | NativeInt _, NativeInt _, `Wasm ->
       false (* [NativeInt]s are boxed in Wasm and are possibly different objects *)
   | NativeInt _, NativeInt _, `JavaScript -> assert false
+  | Null, Null, _ -> true
   (* All other values may be distinct objects and thus different by [caml_js_equals]. *)
   | Int64 _, Int64 _, _ -> false
   | Tuple _, Tuple _, _ -> false
   | Float_array _, Float_array _, _ -> false
-  | (Int _ | Float _ | Float32 _ | Int64 _ | Int32 _ | NativeInt _), _, _ -> false
+  | (Int _ | Float _ | Float32 _ | Int64 _ | Int32 _ | NativeInt _ | Null), _, _ -> false
   | (String _ | NativeString _), _, _ -> false
   | (Float_array _ | Tuple _), _, _ -> false
 

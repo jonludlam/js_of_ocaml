@@ -514,6 +514,7 @@ let rec constant_rec ~ctx x level instrs =
   | Int i -> targetint i, instrs
   | Int32 i | NativeInt i ->
     J.ENum (J.Num.of_targetint (Targetint.of_int32_exn i)), instrs
+  | Null -> s_var "null", instrs
 
 let constant ~ctx x level =
   let expr, instr = constant_rec ~ctx x level [] in

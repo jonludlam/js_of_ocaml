@@ -4,6 +4,7 @@
  (files
   bigarray.js
   bigstring.js
+  capsule.js
   dynlink.js
   fs.js
   fs_fake.js

@@ -404,3 +404,7 @@ let get_instr_exn code pc =
   let ins = ops.(i) in
   if Poly.(ins.kind = K_will_not_happen) then raise (Bad_instruction i);
   ins
+
+let get_instr_name i =
+  if i < 0 || i >= Array.length ops then raise (Bad_instruction i);
+  ops.(i).name

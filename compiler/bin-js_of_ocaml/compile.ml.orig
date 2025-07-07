@@ -322,7 +322,7 @@ let run
     sm
   in
   let output_partial
-      (cmo : Cmo_format.compilation_unit_descr)
+      (cmo : Cmo_format.compilation_unit)
       ~standalone
       ~source_map
       code

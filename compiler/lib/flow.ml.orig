@@ -385,29 +385,21 @@ let constant_identical ~(target : [ `JavaScript | `Wasm ]) a b =
 let the_const_of ~target info x =
   match x with
   | Pv x ->
-
-      (* If this variable was minted after we constructed the info table, conservatively
-         assume we know nothing. Transformations of array-access primitives in
-         [specialize_js.ml] mint variables in this way. *)
-      if Var.idx x >= Array.length info.Info.info_defs
-      then None
-      else (
-        get_approx
-          info
-          (fun x ->
-            match info.info_defs.(Var.idx x) with
-            | Expr (Constant ((Float _ | Int _ | NativeString _) as c)) -> Some c
-            | Expr (Constant (String _ as c)) when Config.Flag.safe_string () -> Some c
-            | Expr (Constant c) ->
-                if Var.ISet.mem info.info_possibly_mutable x then None else Some c
-            | _ -> None)
-          None
-          (fun u v ->
-            match u, v with
-            | Some i, Some j when constant_identical ~target i j -> u
-            | _ -> None)
-          x
-      )
+      get_approx
+        info
+        (fun x ->
+          match info.info_defs.(Var.idx x) with
+          | Expr (Constant ((Float _ | Int _ | NativeString _) as c)) -> Some c
+          | Expr (Constant (String _ as c)) when Config.Flag.safe_string () -> Some c
+          | Expr (Constant c) ->
+              if Var.ISet.mem info.info_possibly_mutable x then None else Some c
+          | _ -> None)
+        None
+        (fun u v ->
+          match u, v with
+          | Some i, Some j when constant_identical ~target i j -> u
+          | _ -> None)
+        x
   | Pc c -> Some c
 
 let the_int ~target info x =

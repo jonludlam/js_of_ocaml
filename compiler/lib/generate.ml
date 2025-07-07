@@ -1113,6 +1113,7 @@ let register_bin_math_prim name prim =
       J.call (J.dot (s_var "Math") prim) [ cx; cy ] loc)
 
 let _ =
+  register_un_prim "%identity" `Pure (fun cx _ -> cx);
   register_un_prim_ctx "%caml_format_int_special" `Pure (fun ctx cx loc ->
       let s = J.EBin (J.Plus, str_js_utf8 "", cx) in
       ocaml_string ~ctx ~loc s);
@@ -2213,6 +2214,20 @@ let f
   p
 
 let init () =
+  (* There are many sets of primitives that have the same behavior in JSOO. The compiler
+     promises to export them as different primitives because there are other systems where
+     their behavior is different. For example, in javascript:
+     - [int]
+     - [int32]
+     - [int32#]
+     - [nativeint]
+     - [nativeint#]
+     have the same representation, and can share the definitions of many primitives.
+
+     [int64] (and [int64#]) have a different representation from these, and so most
+     primitives pertaining to [int64]s are implemented separately as runtime stubs, not as
+     aliases to [int] primitives.
+  *)
   List.iter
     ~f:(fun (nm, nm') -> Primitive.alias nm nm')
     [ "%int_mul", "caml_mul"
@@ -2232,6 +2247,7 @@ let init () =
     ; "caml_int32_shift_right_unsigned", "%int_lsr"
     ; "caml_int32_of_int", "%identity"
     ; "caml_int32_to_int", "%identity"
+    ; "caml_checked_int32_to_int", "%identity"
     ; "caml_int32_of_float", "caml_int_of_float"
     ; "caml_int32_to_float", "%identity"
     ; "caml_int32_format", "caml_format_int"
@@ -2251,6 +2267,7 @@ let init () =
     ; "caml_nativeint_shift_right_unsigned", "%int_lsr"
     ; "caml_nativeint_of_int", "%identity"
     ; "caml_nativeint_to_int", "%identity"
+    ; "caml_checked_nativeint_to_int", "%identity"
     ; "caml_nativeint_of_float", "caml_int_of_float"
     ; "caml_nativeint_to_float", "%identity"
     ; "caml_nativeint_of_int32", "%identity"
@@ -2272,9 +2289,13 @@ let init () =
     ; "caml_array_set_addr", "caml_array_set"
     ; "caml_array_unsafe_get_float", "caml_array_unsafe_get"
     ; "caml_floatarray_unsafe_get", "caml_array_unsafe_get"
+    ; "caml_array_unsafe_get_indexed_by_int32", "caml_array_unsafe_get"
+    ; "caml_array_unsafe_get_indexed_by_nativeint", "caml_array_unsafe_get"
     ; "caml_array_unsafe_set_float", "caml_array_unsafe_set"
     ; "caml_array_unsafe_set_addr", "caml_array_unsafe_set"
     ; "caml_floatarray_unsafe_set", "caml_array_unsafe_set"
+    ; "caml_array_unsafe_set_indexed_by_int32", "caml_array_unsafe_set"
+    ; "caml_array_unsafe_set_indexed_by_nativeint", "caml_array_unsafe_set"
     ; "caml_check_bound_gen", "caml_check_bound"
     ; "caml_check_bound_float", "caml_check_bound"
     ; "caml_alloc_dummy_float", "caml_alloc_dummy"

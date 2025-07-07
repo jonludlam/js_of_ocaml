@@ -284,41 +284,9 @@ module Generate (Target : Target_sig.S) = struct
             let l = List.map ~f:transl_prim_arg l in
             match p, l with
             | Extern "caml_array_unsafe_get", [ x; y ] -> Memory.gen_array_get x y
-            | Extern (( "caml_array_unsafe_get_indexed_by_int32"
-                      | "caml_array_unsafe_get_indexed_by_int64"
-                      | "caml_array_unsafe_get_indexed_by_nativeint"
-                      ) as prim), [ x; y ] ->
-                let conv =
-                  match prim with
-                  | "caml_array_unsafe_get_indexed_by_int32" -> Memory.unbox_int32
-                  | "caml_array_unsafe_get_indexed_by_int64" ->
-                    fun i ->
-                      let* i = Memory.unbox_int64 i in
-                      return (W.I32WrapI64 i)
-                  | "caml_array_unsafe_get_indexed_by_nativeint" -> Memory.unbox_nativeint
-                  | _ -> assert false
-                in
-                Memory.gen_array_get x (Value.val_int (conv y))
             | Extern "caml_floatarray_unsafe_get", [ x; y ] -> Memory.float_array_get x y
             | Extern "caml_array_unsafe_set", [ x; y; z ] ->
                 seq (Memory.gen_array_set x y z) Value.unit
-            | Extern (( "caml_array_unsafe_set_indexed_by_int32"
-                      | "caml_array_unsafe_set_indexed_by_int64"
-                      | "caml_array_unsafe_set_indexed_by_nativeint"
-                      ) as prim), [ x; y; z ] ->
-                let conv =
-                  match prim with
-                  | "caml_array_unsafe_set_indexed_by_int32" -> Memory.unbox_int32
-                  | "caml_array_unsafe_set_indexed_by_int64" ->
-                    fun i ->
-                      let* i = Memory.unbox_int64 i in
-                      return (W.I32WrapI64 i)
-                  | "caml_array_unsafe_set_indexed_by_nativeint" -> Memory.unbox_nativeint
-                  | _ -> assert false
-                in
-                seq
-                  (Memory.gen_array_set x (Value.val_int (conv y)) z)
-                  Value.unit
             | Extern "caml_array_unsafe_set_addr", [ x; y; z ] ->
                 seq (Memory.array_set x y z) Value.unit
             | Extern "caml_floatarray_unsafe_set", [ x; y; z ] ->
@@ -1218,7 +1186,6 @@ let init () =
     ; "caml_process_pending_actions_with_root", "%identity"
     ; "caml_callback", "caml_trampoline"
     ; "caml_make_array", "caml_array_of_uniform_array"
-    ; "caml_checked_nativeint_to_int", "caml_checked_int32_to_int"
     ]
   in
   Primitive.register "caml_array_of_uniform_array" `Mutable None None;

@@ -41,7 +41,7 @@ let rec constant_of_const c : Code.constant =
       Float_array (Array.of_list l)
   | ((Const_pointer i) [@if ocaml_version < (4, 12, 0)]) ->
       Int (Targetint.of_int_warning_on_overflow i)
-  | Const_block (tag, l) ->
+  | Const_mixed_block (tag, _, l) | Const_block (tag, l) ->
       let l = Array.of_list (List.map l ~f:constant_of_const) in
       Tuple (tag, l, Unknown)
 

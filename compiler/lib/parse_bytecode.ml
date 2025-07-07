@@ -440,6 +440,8 @@ end = struct
 
   let ident_native = ident_of_custom (Obj.repr 0n)
 
+  let ident_f32 = ident_of_custom (Obj.repr 0.s)
+
   let rec parse x =
     if Obj.is_block x
     then
@@ -453,6 +455,8 @@ end = struct
       else if tag = Obj.custom_tag
       then
         match ident_of_custom x with
+        | Some name when same_ident name ident_f32 ->
+          Float32 ((Obj.magic x : float32) |> Float32.to_float)
         | Some name when same_ident name ident_32 -> (
             let i : int32 = Obj.magic x in
             match Config.target () with
@@ -481,6 +485,7 @@ end = struct
   let inlined = function
     | String _ | NativeString _ -> false
     | Float _ -> true
+    | Float32 _ -> true
     | Float_array _ -> false
     | Int64 _ -> false
     | Tuple _ -> false

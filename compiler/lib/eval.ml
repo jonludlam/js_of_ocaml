@@ -251,9 +251,11 @@ let constant_js_equal a b =
   match a, b with
   | Int i, Int j -> Some (Targetint.equal i j)
   | Float a, Float b -> Some (Float.ieee_equal a b)
+  | Float32 a, Float32 b -> Some (Float.ieee_equal a b)
+  | Float32 _, Float _ | Float _, Float32 _ -> None
   | NativeString a, NativeString b -> Some (Native_string.equal a b)
   | String a, String b when Config.Flag.use_js_string () -> Some (String.equal a b)
-  | Int _, Float _ | Float _, Int _ -> None
+  | Int _, (Float _ | Float32 _) | (Float _ | Float32 _), Int _ -> None
   (* All other values may be distinct objects and thus different by [caml_js_equals]. *)
   | String _, _
   | _, String _
@@ -411,6 +413,7 @@ let the_cond_of info x =
              ( Int32 _
              | NativeInt _
              | Float _
+             | Float32 _
              | Tuple _
              | String _
              | NativeString _

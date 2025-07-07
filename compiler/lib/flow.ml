@@ -359,7 +359,9 @@ let constant_identical ~(target : [ `JavaScript | `Wasm ]) a b =
   match a, b, target with
   | Int i, Int j, _ -> Targetint.equal i j
   | Float a, Float b, `JavaScript -> Float.bitwise_equal a b
+  | Float32 a, Float32 b, `JavaScript -> Float.bitwise_equal a b
   | Float _, Float _, `Wasm -> false
+  | Float32 _, Float32 _, `Wasm -> false
   | NativeString a, NativeString b, `JavaScript -> Native_string.equal a b
   | NativeString _, NativeString _, `Wasm ->
       false
@@ -378,7 +380,7 @@ let constant_identical ~(target : [ `JavaScript | `Wasm ]) a b =
   | Int64 _, Int64 _, _ -> false
   | Tuple _, Tuple _, _ -> false
   | Float_array _, Float_array _, _ -> false
-  | (Int _ | Float _ | Int64 _ | Int32 _ | NativeInt _), _, _ -> false
+  | (Int _ | Float _ | Float32 _ | Int64 _ | Int32 _ | NativeInt _), _, _ -> false
   | (String _ | NativeString _), _, _ -> false
   | (Float_array _ | Tuple _), _, _ -> false
 

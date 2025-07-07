@@ -25,7 +25,8 @@ let rec constant_of_const c : Code.constant =
   | Const_base (Const_char c) -> Int (Targetint.of_int_exn (Char.code c))
   | ((Const_base (Const_string (s, _))) [@if ocaml_version < (4, 11, 0)])
   | ((Const_base (Const_string (s, _, _))) [@if ocaml_version >= (4, 11, 0)]) -> String s
-  | Const_base (Const_float32 s | Const_unboxed_float32 s | Const_float s | Const_unboxed_float s) -> Float (float_of_string s)
+  | Const_base (Const_float32 s | Const_unboxed_float32 s) -> Float32 Float32.(of_string s |> to_float)
+  | Const_base (Const_float s | Const_unboxed_float s) -> Float (float_of_string s)
   | Const_base (Const_int32 i | Const_unboxed_int32 i) -> (
       match Config.target () with
       | `JavaScript -> Int (Targetint.of_int32_warning_on_overflow i)

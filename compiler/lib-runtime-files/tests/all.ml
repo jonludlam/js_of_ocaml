@@ -21,6 +21,7 @@ let%expect_test _ =
     +dynlink.js
     +effect.js
     +fail.js
+    +float32.js
     +format.js
     +fs.js
     +fs_fake.js
@@ -51,7 +52,8 @@ let%expect_test _ =
     +toplevel.js
     +unix.js
     +weak.js
-    +zstd.js |}];
+    +zstd.js
+    |}];
   printl runtime;
   [%expect
     {|
@@ -64,6 +66,7 @@ let%expect_test _ =
     +domain.js
     +effect.js
     +fail.js
+    +float32.js
     +format.js
     +fs.js
     +fs_fake.js
@@ -93,7 +96,8 @@ let%expect_test _ =
     +sys.js
     +unix.js
     +weak.js
-    +zstd.js |}];
+    +zstd.js
+    |}];
   printl extra;
   [%expect {|
     +dynlink.js

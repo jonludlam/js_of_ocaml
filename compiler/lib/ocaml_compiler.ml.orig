@@ -20,29 +20,28 @@ open! Stdlib
 
 let rec constant_of_const c : Code.constant =
   let open Lambda in
-  let open Asttypes in
   match c with
   | Const_base (Const_int i) -> Int (Targetint.of_int_warning_on_overflow i)
   | Const_base (Const_char c) -> Int (Targetint.of_int_exn (Char.code c))
   | ((Const_base (Const_string (s, _))) [@if ocaml_version < (4, 11, 0)])
   | ((Const_base (Const_string (s, _, _))) [@if ocaml_version >= (4, 11, 0)]) -> String s
-  | Const_base (Const_float s) -> Float (float_of_string s)
-  | Const_base (Const_int32 i) -> (
+  | Const_base (Const_float32 s | Const_unboxed_float32 s | Const_float s | Const_unboxed_float s) -> Float (float_of_string s)
+  | Const_base (Const_int32 i | Const_unboxed_int32 i) -> (
       match Config.target () with
       | `JavaScript -> Int (Targetint.of_int32_warning_on_overflow i)
       | `Wasm -> Int32 i)
-  | Const_base (Const_int64 i) -> Int64 i
-  | Const_base (Const_nativeint i) -> (
+  | Const_base (Const_int64 i | Const_unboxed_int64 i) -> Int64 i
+  | Const_base (Const_nativeint i | Const_unboxed_nativeint i) -> (
       match Config.target () with
       | `JavaScript -> Int (Targetint.of_nativeint_warning_on_overflow i)
       | `Wasm -> NativeInt (Int32.of_nativeint_warning_on_overflow i))
   | Const_immstring s -> String s
-  | Const_float_array sl ->
+  | Const_float_array sl | Const_float_block sl ->
       let l = List.map ~f:(fun f -> float_of_string f) sl in
       Float_array (Array.of_list l)
   | ((Const_pointer i) [@if ocaml_version < (4, 12, 0)]) ->
       Int (Targetint.of_int_warning_on_overflow i)
-  | Const_block (tag, l) ->
+  | Const_mixed_block (tag, _, l) | Const_block (tag, l) ->
       let l = Array.of_list (List.map l ~f:constant_of_const) in
       Tuple (tag, l, Unknown)
 
@@ -89,14 +88,14 @@ module Symtable = struct
       let name = Ident.name id in
       if Ident.is_predef id
       then Some (Glob_predef name)
-      else if Ident.global id
+      else if Ident.is_global id
       then Some (Glob_compunit name)
       else None
 
     let to_ident = function
       | Glob_compunit x -> Ident.create_persistent x
       | Glob_predef x -> Ident.create_predef x
-    [@@ocaml.warning "-32"]
+    [@@if ocaml_version < (5, 2, 0)]
   end
 
   module GlobalMap = struct
@@ -132,11 +131,13 @@ module Symtable = struct
     include GlobalMap
 
     let to_local = function
-      | Symtable.Global.Glob_compunit (Compunit x) -> Global.Glob_compunit x
+      | Symtable.Global.Glob_compunit x ->
+          Global.Glob_compunit (Compilation_unit.name_as_string x)
       | Symtable.Global.Glob_predef (Predef_exn x) -> Global.Glob_predef x
 
     let of_local = function
-      | Global.Glob_compunit x -> Symtable.Global.Glob_compunit (Compunit x)
+      | Global.Glob_compunit x ->
+          Symtable.Global.Glob_compunit (Compilation_unit.of_string x)
       | Global.Glob_predef x -> Symtable.Global.Glob_predef (Predef_exn x)
 
     let filter (p : Global.t -> bool) (gmap : t) =
@@ -163,10 +164,10 @@ module Symtable = struct
   let reloc_set_of_string name = Cmo_format.Reloc_setglobal (Ident.create_persistent name)
   [@@if ocaml_version < (5, 2, 0)]
 
-  let reloc_get_of_string name = Cmo_format.Reloc_getcompunit (Compunit name)
+  let reloc_get_of_string name = Cmo_format.Reloc_getcompunit (Compilation_unit.of_string name)
   [@@if ocaml_version >= (5, 2, 0)]
 
-  let reloc_set_of_string name = Cmo_format.Reloc_setcompunit (Compunit name)
+  let reloc_set_of_string name = Cmo_format.Reloc_setcompunit (Compilation_unit.of_string name)
   [@@if ocaml_version >= (5, 2, 0)]
 
   let reloc_ident name =
@@ -179,7 +180,7 @@ module Symtable = struct
     let get i = Char.code (Bytes.get buf i) in
     let n = get 0 + (get 1 lsl 8) + (get 2 lsl 16) + (get 3 lsl 24) in
     n
-  [@@if ocaml_version < (5, 2, 0)]
+  (* [@@if ocaml_version < (5, 2, 0)]
 
   let reloc_ident name =
     let buf = Bigarray.(Array1.create char c_layout 4) in
@@ -192,6 +193,8 @@ module Symtable = struct
     let n = get 0 + (get 1 lsl 8) + (get 2 lsl 16) + (get 3 lsl 24) in
     n
   [@@if ocaml_version >= (5, 2, 0)]
+  *)
+
 
   let current_state () : GlobalMap.t =
     let x : Symtable.global_map = Symtable.current_state () in
@@ -217,19 +220,18 @@ module Symtable = struct
 end
 
 module Cmo_format = struct
-  type t = Cmo_format.compilation_unit
+  type t = Cmo_format.compilation_unit_descr
 
-  let name (t : t) = t.cu_name [@@if ocaml_version < (5, 2, 0)]
+  let name (t : t) = t.cu_name |> Compilation_unit.name_as_string [@@if ocaml_version < (5, 2, 0)]
 
   let name (t : t) =
-    let (Compunit name) = t.cu_name in
-    name
+    Compilation_unit.name_as_string t.cu_name
   [@@if ocaml_version >= (5, 2, 0)]
 
-  let requires (t : t) = List.map ~f:Ident.name t.cu_required_globals
+  let requires (t : t) = List.map ~f:Compilation_unit.name_as_string t.cu_required_globals
   [@@if ocaml_version < (5, 2, 0)]
 
-  let requires (t : t) = List.map t.cu_required_compunits ~f:(fun (Compunit u) -> u)
+  let requires (t : t) = List.map t.cu_required_compunits ~f:Compilation_unit.name_as_string
   [@@if ocaml_version >= (5, 2, 0)]
 
   let provides (t : t) =
@@ -242,7 +244,7 @@ module Cmo_format = struct
   let provides (t : t) =
     List.filter_map t.cu_reloc ~f:(fun ((reloc : Cmo_format.reloc_info), _) ->
         match reloc with
-        | Reloc_setcompunit (Compunit u) -> Some u
+        | Reloc_setcompunit u -> Some (Compilation_unit.name_as_string u)
         | Reloc_getcompunit _ | Reloc_getpredef _ | Reloc_literal _ | Reloc_primitive _ ->
             None)
   [@@if ocaml_version >= (5, 2, 0)]

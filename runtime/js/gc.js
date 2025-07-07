@@ -99,13 +99,11 @@ function caml_memprof_discard(t) {
 }
 
 //Provides: caml_eventlog_resume
-//Version: < 5.0
 function caml_eventlog_resume(unit) {
   return 0;
 }
 
 //Provides: caml_eventlog_pause
-//Version: < 5.0
 function caml_eventlog_pause(unit) {
   return 0;
 }
@@ -141,4 +139,19 @@ function caml_get_major_bucket(n) {
 //Version: < 5.0
 function caml_get_major_credit(n) {
   return 0;
+}
+
+//Provides: caml_gc_tweak_get
+function caml_gc_tweak_get(s) {
+  return 0;
+}
+
+//Provides: caml_gc_tweak_set
+function caml_gc_tweak_set(s, i) {
+ return 0;
+}
+
+//Provides: caml_gc_tweak_list_active
+function caml_gc_tweak_list_active() {
+ return 0;
 }

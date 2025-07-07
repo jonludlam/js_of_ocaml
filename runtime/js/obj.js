@@ -264,3 +264,8 @@ function caml_int_as_pointer(i) {
 function caml_is_null(o) {
   return o === null;
 }
+
+//Provides: caml_obj_uniquely_reachable_words
+function caml_obj_uniquely_reachable_words(o) {
+	return 0
+}

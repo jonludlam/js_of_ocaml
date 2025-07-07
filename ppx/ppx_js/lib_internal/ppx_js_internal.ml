@@ -250,7 +250,7 @@ let invoker ?(extra_types = []) uplift downlift body arguments =
   in
   let make_fun (label, pat) (label', typ) expr =
     assert (label' = label);
-    Exp.fun_ label None (Pat.constraint_ pat typ) expr
+    Ppxlib_jane.Ast_builder.Default.add_fun_param ~loc:!Ppxlib.Ast_helper.default_loc label None (Pat.constraint_ pat typ) expr
   in
   let invoker =
     List.fold_right2
@@ -309,10 +309,10 @@ let method_call ~loc ~apply_loc obj (meth, meth_loc) args =
   in
   Exp.apply
     ~loc:apply_loc
-    { invoker with pexp_attributes = [ merlin_hide ] }
+    { invoker with pexp_attributes = invoker.pexp_attributes @ [ merlin_hide ] }
     ((app_arg obj :: args)
     @ [ app_arg
-          (Exp.fun_
+          (Ppxlib_jane.Ast_builder.Default.add_fun_param
              ~loc:gloc
              nolabel
              None
@@ -355,7 +355,7 @@ let prop_get ~loc obj prop =
     invoker
     [ app_arg obj
     ; app_arg
-        (Exp.fun_
+        (Ppxlib_jane.Ast_builder.Default.add_fun_param
            ~loc:gloc
            nolabel
            None
@@ -379,9 +379,8 @@ let prop_get ~loc obj prop =
 let prop_set ~loc ~prop_loc obj prop value =
   let gloc = { obj.pexp_loc with Location.loc_ghost = true } in
   let obj =
-    { (Exp.constraint_ ~loc:gloc obj (open_t gloc)) with
-      pexp_attributes = [ merlin_hide ]
-    }
+    let body = Exp.constraint_ ~loc:gloc obj (open_t gloc) in
+    { body with pexp_attributes = body.pexp_attributes @ [ merlin_hide ] }
   in
   let invoker =
     invoker
@@ -409,7 +408,7 @@ let prop_set ~loc ~prop_loc obj prop value =
     [ app_arg obj
     ; app_arg value
     ; app_arg
-        (Exp.fun_
+        (Ppxlib_jane.Ast_builder.Default.add_fun_param
            ~loc:{ loc with loc_ghost = true }
            nolabel
            None
@@ -583,9 +582,12 @@ let preprocess_literal_object mappper fields :
         let body, body_ty = drop_pexp_poly (mappper body) in
         let rec create_meth_ty exp =
           match exp.pexp_desc with
-          | Pexp_fun (label, _, _, body) -> Arg.make ~label () :: create_meth_ty body
-          | Pexp_function _ -> [ Arg.make () ]
-          | Pexp_newtype (_, body) -> create_meth_ty body
+          | Pexp_function (params, _, _) ->
+            List.filter_map params ~f:(fun param ->
+              match param.pparam_desc with
+              | Pparam_val (label, _, _) -> Some (Arg.make ~label ())
+              | Pparam_newtype _ -> None)
+          | Pexp_newtype (_, _, body) -> create_meth_ty body
           | _ -> []
         in
         let fun_ty = create_meth_ty body in
@@ -648,7 +650,7 @@ let literal_object self_id (fields : field_desc list) =
   let body = function
     | Val (_, _, _, body) -> body
     | Meth (_, _, _, body, _) ->
-        Exp.fun_ ~loc:{ body.pexp_loc with loc_ghost = true } Nolabel None self_id body
+      Ppxlib_jane.Ast_builder.Default.add_fun_param ~loc:{ body.pexp_loc with loc_ghost = true } Nolabel None self_id body
   in
   let extra_types =
     List.concat
@@ -732,14 +734,17 @@ let literal_object self_id (fields : field_desc list) =
     invoker
     (List.map fields ~f:(fun f -> app_arg (body f))
     @ [ app_arg
-          { (List.fold_right
+          (let body =
+             List.fold_right
                (self :: List.map fields ~f:(fun f -> (name f).txt))
                ~init:fake_object
                ~f:(fun name fun_ ->
-                 Exp.fun_ ~loc:gloc nolabel None (Pat.var ~loc:gloc (mknoloc name)) fun_))
+                 Ppxlib_jane.Ast_builder.Default.add_fun_param ~loc:gloc nolabel None (Pat.var ~loc:gloc (mknoloc name)) fun_)
+          in
+          { body
             with
-            pexp_attributes = [ merlin_hide ]
-          }
+            pexp_attributes = body.pexp_attributes @ [ merlin_hide ]
+          })
       ])
 
 let transform =

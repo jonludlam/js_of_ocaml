@@ -384,7 +384,7 @@ let eval_instr ~target info i =
                             (* Avoid duplicating the constant here as it would cause an
                                allocation *)
                             arg
-                        | Some (Int32 _ | NativeInt _), `JavaScript -> arg
+                        | Some (Int32 _ | NativeInt _), `JavaScript -> assert false
                         | Some ((Float _ | NativeString _) as c), `JavaScript -> Pc c
                         | Some (String _ as c), `JavaScript
                           when Config.Flag.use_js_string () -> Pc c
